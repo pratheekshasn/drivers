@@ -151,6 +151,11 @@ make
 # Load the module
 make install
 
+# Get hold of the major number that the module was registered with
+sudo dmesg | tail -5
+
+sudo mknod /dev/mychardev c <major_number> 0
+
 # Check it's loaded
 lsmod | grep mychardev
 
