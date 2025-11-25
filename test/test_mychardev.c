@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <unistd.h>
 #include <string.h>
 
@@ -10,6 +11,7 @@ int main() {
         return 1;
     }
 
+    // Write initial data to device
     char write_buf[] = "Hello from user space!";
     if (write(fd, write_buf, strlen(write_buf)) < 0) {
         perror("Failed to write");
@@ -17,15 +19,30 @@ int main() {
         return 1;
     }
 
-    char read_buf[256];
-    int bytes_read = read(fd, read_buf, sizeof(read_buf) - 1);
-    if (bytes_read < 0) {
-        perror("Failed to read");
-        close(fd);
-        return 1;
+    struct pollfd fds = {
+        .fd = fd,
+        .events = POLLIN,
+    };
+
+    printf("Waiting for device data (simulated interrupt)...\n");
+
+    int ret = poll(&fds, 1, 5000); // 5000 ms timeout
+    if (ret == 0) {
+        printf("Timeout waiting for data.\n");
+    } else if (ret < 0) {
+        perror("poll");
+    } else {
+        if (fds.revents & POLLIN) {
+            char buf[256];
+            int bytes_read = read(fd, buf, sizeof(buf) - 1);
+            if (bytes_read < 0) {
+                perror("Failed to read");
+            } else {
+                buf[bytes_read] = '\0';
+                printf("Received data: %s\n", buf);
+            }
+        }
     }
-    read_buf[bytes_read] = '\0';
-    printf("Read from device: %s\n", read_buf);
 
     close(fd);
     return 0;
